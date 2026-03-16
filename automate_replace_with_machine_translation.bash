@@ -7,7 +7,7 @@
 max_segments=${1:?max segments to translate}
 delay=${2:?delay in seconds between segments}
 
-WID=$(xdotool search --name "OmegaT")
+WID=$(xdotool search --name "OmegaT [0-9]")
 
 xdotool windowactivate --sync $WID
 for i in $(seq 1 $max_segments); do
