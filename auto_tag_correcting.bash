@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
 # Automatically fix broken/missing tags
-# Make sure the "Issues" window is open and focused before running this script
+# Make sure the "Issues" window is open before running this script
 
 tags=${1:?number of tags to fix}
 delay=${2:?delay in seconds between actions}

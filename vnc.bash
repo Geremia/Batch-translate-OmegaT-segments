@@ -1,30 +1,42 @@
 #!/bin/bash
 
-# Clean previous instance
-pkill -f Xvfb
-
-# Start Xvfb natively mimicking a High-DPI screen (Double DPI)
-mkdir -p /tmp/empty_egl
-__EGL_VENDOR_LIBRARY_FILENAMES=/tmp/empty_egl Xvfb :99 -screen 0 2560x1600x24 -dpi 192 &> /dev/null &
-sleep 1
-
-# Fire up the VNC translator
-x0vncserver -display :99 -SecurityTypes None -localhost &> /dev/null &
-sleep 1
-
-# Start Openbox
-if ! pgrep -x "openbox" > /dev/null; then
-    DISPLAY=:99 openbox &
-    sleep 1 # Give it a second to initialize
+export DISPLAY=":${1:?Specify display number ∈ [1,99]}"
+DISPLAY_NUM=${DISPLAY#:}
+if [ $DISPLAY_NUM -gt 99 ] || [ $DISPLAY_NUM -lt 1 ]; then
+    echo "Display number must be ∈ [1,99]"
+    exit 1
 fi
+export RFBPORT=$((5900 + $DISPLAY_NUM))
+export HOST_DISPLAY=${HOST_DISPLAY:-:0}
 
-# launch inside display :99
-DISPLAY=:99 OmegaT &> /dev/null &
+trap 'echo "Shutting down environment…"; kill 0' EXIT
 
-# Open the viewer normally
-vncviewer localhost:5900 &> /dev/null &
+rm -f /tmp/.X11-unix/X$DISPLAY_NUM /tmp/.X$DISPLAY_NUM-lock
+
+echo "Starting Xvfb on display $DISPLAY…"
+mkdir -p /tmp/empty_egl
+__EGL_VENDOR_LIBRARY_FILENAMES=/tmp/empty_egl Xvfb $DISPLAY -screen 0 2560x1600x24 -dpi 192 &> /dev/null &
+sleep 1
+
+echo "Starting x0vncserver to serve on localhost:$RFBPORT…"
+x0vncserver -display $DISPLAY -SecurityTypes None -localhost -rfbport $RFBPORT &> /dev/null &
+sleep 1
+
+echo "Starting openbox…"
+openbox &> /dev/null &
+sleep 1
+
+echo "Starting OmegaT…"
+OmegaT &> /dev/null &
+sleep 1
+
+echo "Starting vncviewer on \$HOST_DISPLAY = $HOST_DISPLAY…"
+DISPLAY=$HOST_DISPLAY vncviewer localhost:$RFBPORT &> /dev/null &
+
+echo "Environment is up! Press Ctrl+C to close everything."
+wait
 
 
 # Run the auto_tag_correcting.bash & automate_replace_with_machine_translation.bash scripts in that display, e.g.:
-# $ DISPLAY=:99 ./automate_replace_with_machine_translation.bash
-# $ DISPLAY=:99 ./auto_tag_correcting.bash
+# $ DISPLAY=$DISPLAY_NUM ./automate_replace_with_machine_translation.bash
+# $ DISPLAY=$DISPLAY_NUM ./auto_tag_correcting.bash
